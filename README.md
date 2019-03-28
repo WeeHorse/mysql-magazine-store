@@ -73,7 +73,7 @@ Databasen kan hämtas här: <a href="https://java18.nodehill.se/wp-content/uploa
 
 __Kod till server med express nedan.__ _(Kom ihåg att köra npm install i terminalen.)_
 
-[<button class="btn-small">Ladda hem koden som zip</button>](/wp-content/uploads/2019/03/magazine-store-2.zip)
+[<button class="btn-small">Ladda hem koden som zip</button>](https://java18.nodehill.se/wp-content/uploads/2019/03/magazine-store-2.zip)
 
 #### server.js
 ```js
