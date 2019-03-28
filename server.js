@@ -63,11 +63,6 @@ app.delete('/rest/:table/:id', async (req, res) => {
   res.json(result);
 });
 
-// servern startas
-app.listen(port, () => {
-  console.log('server running on port ' + port);
-})
-
 /////////////////
 // SESSION-TEST
 //
@@ -88,3 +83,9 @@ app.get('/session-test/:key?/:val?', async (req, res) => {
   req.session[req.params.key] = req.params.val;
   res.json(req.session);
 });
+
+
+// servern startas
+app.listen(port, () => {
+  console.log('server running on port ' + port);
+})
