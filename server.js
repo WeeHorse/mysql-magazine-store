@@ -5,6 +5,9 @@ const bodyParser = require('body-parser');
 app.use(bodyParser.json());
 // porten vi servar på (som i http://localhost:3000 )
 const port = 3000;
+// bcrypt for passwords
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 // Registera session middleware
 const session = require('express-session');
@@ -29,6 +32,58 @@ db.connect = util.promisify(db.connect);
 db.query = util.promisify(db.query);
 // Anslut till databasen
 db.connect();
+
+/////////////////////////
+// Authentication routes
+
+// Register
+app.post('/rest/register', async (req, res) => {
+  // encrypt password
+  req.body.password = await bcrypt.hash(req.body.password, saltRounds);
+  // create user
+  let user = await db.query("INSERT INTO users SET ?", req.body);
+  // user.roles = ["user"];
+  res.json({msg: req.body.firstname + ' registered'});
+});
+
+// Login
+app.post('/rest/login', async (req, res) => {
+  // find user
+  let [user] = await db.query("SELECT * FROM users WHERE email = ?", [req.body.email]);
+  // passwords match?
+  if(user && await bcrypt.compare(req.body.password, user.password)){
+  // if(req.body.password == user.password){
+    req.user = user;
+    req.session.user = user.id;
+    req.session.loggedIn = true;
+  //   await req.session.save(); // save the state
+    res.json(user);
+  }else{
+    res.json({msg:'Failed login'});
+  }
+});
+
+app.delete('/rest/login', async (req, res) => {
+  req.user = {}; // we clear the user
+  req.session.loggedIn = false; // but we retain the session with a logged out state, since this is better for tracking, pratical and security reasons
+  // await req.session.save(); // save the state
+  res.json({msg:'Logged out'});
+});
+
+// current user data
+app.get('/rest/login', (req, res) => {
+  // check if there is a logged-in user and return that user
+  let response;
+  if(req.session && req.session.user && req.session.user.id){
+    response = req.user;
+    // never send the password back
+    response.password = '******';
+  }else{
+    response = {message: 'Not logged in'};
+  }
+  res.json(response);
+});
+
 
 ////////////
 // REST API
