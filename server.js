@@ -1,3 +1,6 @@
+//////////
+// CONFIG
+
 // Skapa en express-app (vår server)
 const app = require('express')();
 // express behöver body-parser för att läsa in request body (som json)
@@ -30,8 +33,41 @@ db.query = util.promisify(db.query);
 // Anslut till databasen
 db.connect();
 
-////////////
-// REST API
+///////////////////////////
+// REST API AUTHENTICATION
+
+app.post('/rest/login', async (req, res) => {
+  let user = await db.query("SELECT * FROM users WHERE email = ?", [req.body.email]);
+  user = user[0];
+  if(user.password == req.body.password){
+    req.session.user = user;
+    res.json({msg:'loggedIn'});
+  }else{
+    res.json({msg:'bad credentials'});
+  }
+});
+
+app.get('/rest/login', async (req, res) => {
+  if(req.session && req.session.user){
+    let user = await db.query("SELECT * FROM users WHERE email = ? AND password = ?", [req.session.user.email, req.session.user.password]);
+    user = user[0];
+    if(user){
+      delete(user.password);
+      res.json(user);
+      return;
+    }
+  }
+  res.json({msg:'not logged in'});
+});
+
+app.delete('/rest/login', (req, res) => {
+  delete(session.user);
+  res.json({msg:'not logged in'});
+});
+
+
+/////////////////
+// REST API DATA (the rest of the REST)
 // Läs om det i workshoppens artikel
 
 // GET läser, ex: http://localhost:3000/magazines,  http://localhost:3000/magazines/2
