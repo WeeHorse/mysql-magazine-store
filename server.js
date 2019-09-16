@@ -5,7 +5,7 @@
 const app = require('express')();
 // express behöver body-parser för att läsa in request body (som json)
 const bodyParser = require('body-parser');
-app.use(bodyParser.json());
+app.use(bodyParser.json({limit: '50mb'}));
 // porten vi servar på (som i http://localhost:3000 )
 const port = 3000;
 
@@ -34,10 +34,61 @@ db.query = util.promisify(db.query);
 db.connect();
 
 ///////////////////////////
+// REST API ACCESS CONTROL
+
+// Vi registrerar denna middleware först (ok, efter session), och fångar därmed alla requests.
+// Vi väljer att endast släppa igenom requests som tillåts i databasen (whitelisting)
+let accessControlList = null;
+
+app.all('DISABLED', async (req, res, next) => {
+  if(!req.session.user || !req.session.user.roles){
+    let roles = [1];
+  }else{
+    let roles = req.session.user.roles;
+  }
+  if(!accessControlList){
+    let acl = await db.query("SELECT * FROM access");
+    accessControlList = {};
+    for(let entry of acl){
+      // map the path
+      if(!accessControlList[entry.path]){
+        accessControlList[entry.path] = {};
+      }
+      // map each role and its specific rights
+      accessControlList[entry.path][entry.role] = [
+        entry.create? 'post':'',
+        entry.read? 'get':'',
+        entry.update? 'put':'',
+        entry.delete? 'delete':''
+      ];
+    }
+    // test the users roles against the access control list
+    for(let role of roles){
+      if(accessControlList[req.path][role].includes(req.method)){
+        res.json(req.session.acl[req.path]);
+        // denna request matchade, släpp igenom den:
+        next();
+        return;
+      }
+    }
+    // denna request matchade inte ACL, stoppa den:
+    res.sendStatus(403);
+  }
+});
+
+// temp upload thingy
+app.post('/rest/upload', async(req, res) => {
+  console.log('req.body', req.body);
+  res.json(req.body);
+});
+
+///////////////////////////
 // REST API AUTHENTICATION
 
 app.post('/rest/login', async (req, res) => {
-  let user = await db.query("SELECT * FROM users WHERE email = ?", [req.body.email]);
+  // patch to fetch roles along with the current user
+  let user = await db.query("SELECT * FROM users, usersXroles x, roles WHERE email = ? AND roles.id = x.role AND x.user = users.id", [req.body.email]);
+  //let user = await db.query("SELECT * FROM users WHERE email = ?", [req.body.email]);
   user = user[0];
   if(user.password == req.body.password){
     req.session.user = user;
@@ -49,7 +100,9 @@ app.post('/rest/login', async (req, res) => {
 
 app.get('/rest/login', async (req, res) => {
   if(req.session && req.session.user){
-    let user = await db.query("SELECT * FROM users WHERE email = ? AND password = ?", [req.session.user.email, req.session.user.password]);
+    // patch to fetch roles along with the current user
+    let user = await db.query("SELECT * FROM users, usersXroles x, roles WHERE email = ? AND password = ? AND roles.id = x.role AND x.user = users.id", [req.session.user.email, req.session.user.password]);
+    //let user = await db.query("SELECT * FROM users WHERE email = ? AND password = ?", [req.session.user.email, req.session.user.password]);
     user = user[0];
     if(user){
       delete(user.password);
