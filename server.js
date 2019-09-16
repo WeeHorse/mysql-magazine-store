@@ -24,7 +24,7 @@ const db = mysql.createConnection({
   host     : 'localhost',
   user     : 'root',
   password : 'mysql',
-  database : 'magazine_store'
+  database : 'magazine_store_acl'
 });
 // gör om metoderna connect och query till promise-metoder, så vi kan använda async / await
 const util = require('util');
