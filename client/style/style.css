@@ -1,0 +1,80 @@
+body{
+  background-color:black;
+  background-image:url(../images/newspaper.jpg);
+  background-size:cover;
+  background-attachment: fixed;
+  min-height:100vh;
+  color:white;
+  padding:2vmax;
+}
+#app{
+  max-width: 985px;
+  margin:auto;
+}
+.large-icon{
+  font-size:2em;
+}
+.med-icon{
+  font-size:1.5em;
+}
+.menu-cart{
+  margin-top:10px;
+  margin-right:20px;
+  flex-grow:1;
+  cursor:pointer;
+}
+.product-cart{
+  padding: 10px 15px 5px;
+  background-color: #e2e2e2;
+  border: 1px solid silver;
+  border-radius: 0 0 5px 5px;
+  border-top: 0;
+  min-height: 4em;
+  color: black;
+}
+.product-cart .fa-cart-arrow-down{
+  cursor:pointer;
+}
+.product>.image{
+  height:20vw;
+  background-color:whitesmoke;
+  border:1px solid silver;
+  border-bottom:0;
+  overflow: hidden;
+}
+.cart-item-amount input{
+  max-width: 40px;
+}
+.cart{
+  border: 1px solid silver;
+  border-radius: 15px;
+  position: absolute;
+  right: 4vw;
+  top:7vh;
+  background-color: #e2e2e2;
+  z-index: 2;
+  color:black;
+}
+.cart table {
+  color:black;
+  width:30vw;
+  min-width:300px;
+}
+.cart-background{
+  position:fixed;
+  top:0;
+  left:0;
+  z-index:1;
+  background-color:rgba(0,0,0,0.5);
+  width:100vw;
+  height:100vh;
+}
+.darker{
+  background:rgba(0,0,0,0.5);
+  padding:10px;
+  margin:10px;
+}
+.darker .nav-link{
+  color:white;
+  font-weight: bold;
+}

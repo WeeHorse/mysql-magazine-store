@@ -1,16 +1,20 @@
 //////////
 // CONFIG
-
+//const uuidv4 = require('uuid/v4');
+const path = require('path');
 // Skapa en express-app (vår server)
-const app = require('express')();
+const express = require('express');
+const app = express();
 // express behöver body-parser för att läsa in request body (som json)
 const bodyParser = require('body-parser');
 app.use(bodyParser.json({limit: '50mb'}));
-// porten vi servar på (som i http://localhost:3000 )
-const port = 3000;
+// porten vi servar på (som i http://localhost:3001 )
+const port = 3001;
 
 // Registera session middleware
 const session = require('express-session');
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
 app.use(session({
   secret: 'keyboardkitten',
   resave: false,
@@ -40,40 +44,57 @@ db.connect();
 // Vi väljer att endast släppa igenom requests som tillåts i databasen (whitelisting)
 let accessControlList = null;
 
-app.all('DISABLED', async (req, res, next) => {
+app.all('/rest/*', async (req, res, next) => {
+  console.log('request in acl', req.path, req.method);
+  req.pathClean = req.path.replace(/\/$/,'');
+  // if(!req.session.cookie.id){
+  //   req.session.cookie.id = uuidv4();
+  // }
+  let roles;
   if(!req.session.user || !req.session.user.roles){
-    let roles = [1];
+    roles = [1];
   }else{
-    let roles = req.session.user.roles;
+    roles = req.session.user.roles;
   }
-  if(!accessControlList){
-    let acl = await db.query("SELECT * FROM access");
-    accessControlList = {};
-    for(let entry of acl){
-      // map the path
-      if(!accessControlList[entry.path]){
-        accessControlList[entry.path] = {};
-      }
-      // map each role and its specific rights
-      accessControlList[entry.path][entry.role] = [
-        entry.create? 'post':'',
-        entry.read? 'get':'',
-        entry.update? 'put':'',
-        entry.delete? 'delete':''
-      ];
-    }
-    // test the users roles against the access control list
-    for(let role of roles){
-      if(accessControlList[req.path][role].includes(req.method)){
-        res.json(req.session.acl[req.path]);
-        // denna request matchade, släpp igenom den:
-        next();
-        return;
-      }
-    }
-    // denna request matchade inte ACL, stoppa den:
-    res.sendStatus(403);
+  if(!roles){
+    roles = [];
   }
+  roles.push(0); // always role 0 = access to paths not limited by roles
+  let acl = await db.query("SELECT * FROM access");
+  accessControlList = {};
+  for(let entry of acl){
+    // map the path
+    if(!accessControlList[entry.path]){
+      accessControlList[entry.path] = {};
+    }
+    if(!accessControlList[entry.path][entry.role]){
+      accessControlList[entry.path][entry.role] = [];
+    }
+    // map each role and its specific rights
+    accessControlList[entry.path][entry.role] = [
+      entry.create? 'post':'',
+      entry.read? 'get':'',
+      entry.update? 'put':'',
+      entry.delete? 'delete':''
+    ];
+  }
+  console.log('accessControlList', accessControlList);
+  console.log('req.pathClean', req.pathClean);
+  console.log('roles', roles);
+  // test the users roles against the access control list
+  for(let role of roles){
+    console.log('match?', accessControlList[req.pathClean][role]);
+    // access limited by role and method
+    if(accessControlList[req.pathClean][role] && accessControlList[req.pathClean][role].includes(req.method.toLowerCase())){
+      // denna request matchade, släpp igenom den:
+      console.log('request passed', req.pathClean, req.method.toLowerCase());
+      next();
+      return;
+    }
+  }
+  // denna request matchade inte ACL, stoppa den:
+  console.log('request failed', req.pathClean, req.method.toLowerCase());
+  res.status(403).end();
 });
 
 // temp upload thingy
@@ -92,7 +113,9 @@ app.post('/rest/login', async (req, res) => {
   user = user[0];
   if(user.password == req.body.password){
     req.session.user = user;
-    res.json({msg:'loggedIn'});
+    delete(user.password);
+    res.json(user);
+    return;
   }else{
     res.json({msg:'bad credentials'});
   }
@@ -117,6 +140,26 @@ app.delete('/rest/login', (req, res) => {
   delete(session.user);
   res.json({msg:'not logged in'});
 });
+
+/////////////////
+// CUSTOM REST routes
+app.get('/rest/cart', async (req, res) => {
+  let result;
+  console.log('/rest/cart route session', req.session);
+  if(req.session.user){
+    result = await db.query("SELECT * FROM carts WHERE user = ?", [req.session.user.id]);
+  }else if(req.session.cookie && req.session.id){
+    result = await db.query("SELECT * FROM carts WHERE session = ?", [req.session.id]);
+  }
+  res.json(result);
+});
+
+app.post('/rest/cart', async (req, res) => {
+  let result;
+  result = await db.query("INSERT INTO carts SET product = ?, amount = ?, session = ?, user = ?", [req.body.product, req.body.amount, req.session.id, req.session.user? req.session.user.id : null]);
+  res.json(result);
+});
+
 
 
 /////////////////
@@ -152,6 +195,11 @@ app.delete('/rest/:table/:id', async (req, res) => {
   res.json(result);
 });
 
+app.all('/rest/*', async (req, res) => {
+  console.log('not found', req.path, req.method);
+  res.status(404).end();
+});
+
 /////////////////
 // SESSION-TEST
 //
@@ -171,6 +219,16 @@ app.delete('/rest/:table/:id', async (req, res) => {
 app.get('/session-test/:key?/:val?', async (req, res) => {
   req.session[req.params.key] = req.params.val;
   res.json(req.session);
+});
+
+// serve frontend files (all existing files in the client folder will respond)
+app.use(express.static( './client/'));
+// also catch all remaining requests
+// and send them to our index.html file
+// because that is how we get virtual routes in the front-end (and front-end 404's)
+// use a little regex for that (not match rest)
+app.get('*', async(req, res)=>{
+  res.sendFile(path.normalize(__dirname + '/client/index.html'));
 });
 
 
