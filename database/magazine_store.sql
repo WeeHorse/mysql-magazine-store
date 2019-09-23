@@ -6,8 +6,8 @@
 # https://github.com/sequelpro/sequelpro
 #
 # Host: 127.0.0.1 (MySQL 5.6.36)
-# Database: magazine_store
-# Generation Time: 2019-03-29 12:10:00 +0000
+# Database: magazine_store_acl
+# Generation Time: 2019-09-23 19:47:06 +0000
 # ************************************************************
 
 
@@ -20,47 +20,123 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 
-# Dump of table basket
+# Dump of table access
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `basket`;
+DROP TABLE IF EXISTS `access`;
 
-CREATE TABLE `basket` (
+CREATE TABLE `access` (
+  `path` varchar(255) NOT NULL DEFAULT '',
+  `role` int(11) unsigned DEFAULT NULL,
+  `create` tinyint(1) NOT NULL DEFAULT '0',
+  `read` tinyint(1) NOT NULL DEFAULT '0',
+  `update` tinyint(1) NOT NULL DEFAULT '0',
+  `delete` tinyint(1) NOT NULL DEFAULT '0'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+LOCK TABLES `access` WRITE;
+/*!40000 ALTER TABLE `access` DISABLE KEYS */;
+
+INSERT INTO `access` (`path`, `role`, `create`, `read`, `update`, `delete`)
+VALUES
+	('/rest/login',1,1,1,0,0),
+	('/rest/login',2,0,1,0,1),
+	('/rest/users',2,0,1,1,0),
+	('/rest/users',1,1,0,0,0),
+	('/rest/categories',0,0,1,0,0),
+	('/rest/products',0,0,1,0,0),
+	('/rest/register',1,1,0,0,0),
+	('/rest/usersXroles',1,1,0,0,0),
+	('/rest/carts',3,1,1,1,1),
+	('/rest/cart',0,1,1,1,1),
+	('/rest/products',3,1,1,1,1);
+
+/*!40000 ALTER TABLE `access` ENABLE KEYS */;
+UNLOCK TABLES;
+
+
+# Dump of table carts
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `carts`;
+
+CREATE TABLE `carts` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `magazine` int(11) NOT NULL,
+  `product` int(11) NOT NULL,
   `amount` int(11) NOT NULL DEFAULT '1',
-  `session` int(11) DEFAULT NULL,
+  `session` varchar(255) DEFAULT NULL,
   `user` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+LOCK TABLES `carts` WRITE;
+/*!40000 ALTER TABLE `carts` DISABLE KEYS */;
+
+INSERT INTO `carts` (`id`, `product`, `amount`, `session`, `user`)
+VALUES
+	(44,2,1,'1vkZTlZuZwJNz9_UjtH2I4tcUDULlRd7',NULL),
+	(45,2,1,'1vkZTlZuZwJNz9_UjtH2I4tcUDULlRd7',NULL),
+	(46,1,1,'1vkZTlZuZwJNz9_UjtH2I4tcUDULlRd7',NULL),
+	(47,2,1,'1vkZTlZuZwJNz9_UjtH2I4tcUDULlRd7',2),
+	(48,1,1,'1vkZTlZuZwJNz9_UjtH2I4tcUDULlRd7',2),
+	(49,1,1,'1vkZTlZuZwJNz9_UjtH2I4tcUDULlRd7',2),
+	(50,1,1,'l8N8Ct02iKxR8AactWPezOZ0AoP9Txeh',2),
+	(51,2,1,'l8N8Ct02iKxR8AactWPezOZ0AoP9Txeh',2);
+
+/*!40000 ALTER TABLE `carts` ENABLE KEYS */;
+UNLOCK TABLES;
 
 
-# Dump of table magazines
+# Dump of table categories
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `magazines`;
+DROP TABLE IF EXISTS `categories`;
 
-CREATE TABLE `magazines` (
+CREATE TABLE `categories` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(255) DEFAULT NULL,
-  `price` decimal(10,2) NOT NULL DEFAULT '0.00',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-LOCK TABLES `magazines` WRITE;
-/*!40000 ALTER TABLE `magazines` DISABLE KEYS */;
+LOCK TABLES `categories` WRITE;
+/*!40000 ALTER TABLE `categories` DISABLE KEYS */;
 
-INSERT INTO `magazines` (`id`, `name`, `price`)
+INSERT INTO `categories` (`id`, `name`)
 VALUES
-	(1,'Café',50.00),
-	(2,'New Yorker',49.50),
-	(3,'Bamse',78.00),
-	(5,'Frida',141.00),
-	(6,'Magda',99.00),
-	(7,'Pravda',19.00);
+	(1,'Newspapers'),
+	(2,'Magazines');
 
-/*!40000 ALTER TABLE `magazines` ENABLE KEYS */;
+/*!40000 ALTER TABLE `categories` ENABLE KEYS */;
+UNLOCK TABLES;
+
+
+# Dump of table products
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `products`;
+
+CREATE TABLE `products` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) DEFAULT NULL,
+  `price` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `vat` double(3,2) DEFAULT NULL,
+  `artnr` varchar(255) DEFAULT NULL,
+  `description` text,
+  `image` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+LOCK TABLES `products` WRITE;
+/*!40000 ALTER TABLE `products` DISABLE KEYS */;
+
+INSERT INTO `products` (`id`, `name`, `price`, `vat`, `artnr`, `description`, `image`)
+VALUES
+	(1,'New Yorker',190.00,0.25,'NY','The dapper mag','newyorker.jpg'),
+	(2,'Passé',50.00,0.06,'PA','But we want to be the dapper mag','passe.jpg'),
+	(3,'Bamse',79.50,0.06,'BA','Samhällets vagga','bamse.jpg'),
+	(4,'Trillium',779.50,0.25,'TR','Rare rural writing recovered','trillium.jpg');
+
+/*!40000 ALTER TABLE `products` ENABLE KEYS */;
 UNLOCK TABLES;
 
 
@@ -113,9 +189,9 @@ DROP TABLE IF EXISTS `sessions`;
 
 CREATE TABLE `sessions` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `sess_id` varchar(255) NOT NULL DEFAULT '',
-  `user` int(11) unsigned DEFAULT NULL,
-  `data` longtext,
+  `varukorg` int(11) unsigned NOT NULL,
+  `role` int(11) unsigned NOT NULL,
+  `user` int(11) unsigned NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -143,7 +219,7 @@ VALUES
 	(1,'benjamin.berglund@devoote.se','abc123','Benjamin','Berglund'),
 	(2,'admin@magazinestore.se','abc123','Magazine','Admin'),
 	(3,'super@magazinestore.se','abc123','Magazine','Super'),
-	(4,'ben@nodebite.se','abc123','Ben','Jonsson');
+	(13,'benjaminberglund@gmail.com','abc123','GoogleBen','Benjamin');
 
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -167,7 +243,7 @@ VALUES
 	(1,2),
 	(2,3),
 	(3,4),
-	(4,2);
+	(13,2);
 
 /*!40000 ALTER TABLE `usersXroles` ENABLE KEYS */;
 UNLOCK TABLES;
